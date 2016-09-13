@@ -1,0 +1,67 @@
+#!/usr/bin/env sh
+
+# License: MIT
+# Author: 2016 draget@speciesm.net
+#
+# Notes:
+# - config-names should be simple descriptive names
+# - waits 120s for a lock
+# - ignores folder with .NOBACKUP tag-file
+# - prefix defaults to hostname if not specified in config
+#
+
+# Print usage info
+[ -z $2 ] && echo "Usage: $0 <command> <config> or $0 <config>" && exit 0
+
+# Load config and do simple sanity-check
+SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "${SCRIPTDIR}/conf/$2.conf"
+[ -z $BORG_REPO ] && echo "Error loading config vales 'no Repository set'." && exit 1
+
+case $1 in
+"create")
+	INCLUDEFILE=${SCRIPTDIR}/conf/$2.include
+	EXCLUDEFILE=${SCRIPTDIR}/conf/$2.exclude
+	[ ! -f $INCLUDEFILE ] && echo "Error loading includefile '$INCLUDEFILE'." && exit 1
+	[ ! -f $EXCLUDEFILE ] && echo "Error loading excludefile '$EXCLUDEFILE'." && exit 1
+	# Filter comments from include
+	INCLUDELIST=$(egrep -v '^(#| |$)' $INCLUDEFILE)
+	# Default PREFIX=hostname if empty
+	if [ -z $PREFIX ] ; then PREFIX="{hostname}" ; fi
+
+	echo "# Running borg create:"
+	borg create --stats --progress --verbose \
+	  --lock-wait 120 \
+	  $ONEFS \
+	  --chunker-params $CHUNKERPARAMS \
+	  --compression $COMPRESSION \
+	  --exclude-if-present ".NOBACKUP" --keep-tag-file --exclude-caches --exclude-from $EXCLUDEFILE \
+	  $BORG_REPO::$PREFIX-$2-{now:%Y%m%d-%H%M%S} \
+	  $INCLUDELIST || exit 1
+	echo "# Done"
+	;;
+"prune")
+	echo "# Running borg prune on $BORG_REPO:"
+	borg prune --verbose --stats \
+	  --prefix $PREFIX \
+	  --keep-within $KEEP_WITHIN --keep-daily $KEEP_DAILY --keep-weekly $KEEP_WEEKLY --keep-monthly $KEEP_MONTHLY --keep-yearly $KEEP_YEARLY \
+	  $BORG_REPO || exit 1
+	echo "# Done"
+	;;
+"check")
+	echo "# Running borg check on whole $BORG_REPO:"
+	borg check --verbose --last $CHECK_LAST $BORG_REPO || exit 1
+	echo "# Done"
+	;;
+"mount")
+	echo "# Running borg munt $BORG_REPO:"
+	borg mount --verbose $BORG_REPO $2 || exit 1
+	echo "# Done"
+	;;	
+*)
+	# Works for break-lock, init, list
+	echo "# Running $1 on $BORG_REPO"
+	borg $1 --verbose $BORG_REPO || exit 1
+	echo "# Done"
+	;;
+esac

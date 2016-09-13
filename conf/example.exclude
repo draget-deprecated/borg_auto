@@ -1,0 +1,16 @@
+# Excluded files or directories
+# Path always matches full path of a dir or file. To exclude a dir, it should not end on /. If it does, a * is added automatically, meaning all files
+# but not the dir itself is excluded.
+
+# Exclude VMs
+#/home/*/.VirtualBox/*
+
+# Other cache stuff
+#*/.googleearth/Cache/*
+#*/.gradle/caches/*
+#*/.icedtea/cache/*
+#*/.icedteaplugin/cache/*
+#*/.java/deployment/cache/*
+#*/.javafxcache/*
+#*/.m2/repository/*
+#*/.thumbnails/*
